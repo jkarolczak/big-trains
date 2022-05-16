@@ -1,2 +1,7 @@
 # big-trains
-Project on trains in Poland implemented using Cassandra as a part of big data course
+
+Setup scripts are provided in the `/docker/` directory. Before running script make sure that necessary permissions are granted to all scripts in the directory:
+```shell
+sudo chmod -R 744 docker/
+```
+ 
