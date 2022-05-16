@@ -1,4 +1,13 @@
 import yaml
+from cassandra import ConsistencyLevel
+
+CONSISTENCY = {
+    "one": ConsistencyLevel.ONE,
+    "two": ConsistencyLevel.TWO,
+    "three": ConsistencyLevel.THREE,
+    "quorum": ConsistencyLevel.QUORUM,
+    "all": ConsistencyLevel.ALL,
+}
 
 
 class Config:
@@ -16,11 +25,11 @@ class Config:
 
     @property
     def consistency(self):
-        consistency = self._config["consistency"]
-        allowable_consistency = {"ONE", "TWO", "THREE", "QUORUM", "ALL"}
-        if consistency.upper() not in allowable_consistency:
+        consistency = self._config["consistency"].lower()
+        allowable_consistency = {"one", "two", "three", "quorum", "all"}
+        if consistency.lower() not in allowable_consistency:
             raise ValueError(f"Consistency level should be one of {allowable_consistency} but found {consistency}")
-        return consistency.upper()
+        return CONSISTENCY[consistency]
 
     @property
     def ip_address(self) -> str:

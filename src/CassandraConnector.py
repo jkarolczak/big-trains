@@ -1,6 +1,7 @@
 from cassandra.cluster import Cluster
 
-import Config
+from Config import Config
+from TableDefinition import TableDefinition
 
 
 class CassandraConnector:
@@ -9,14 +10,19 @@ class CassandraConnector:
             config: Config
     ) -> None:
         self._config = config
-        self.cluster = Cluster([self._config.ip_address], self._config.port)
-        self.session = None
-        self.set_session()
+        self._cluster = Cluster([self._config.ip_address], self._config.port)
+        self._session = None
+        self._set_session()
+        self._create_tables()
 
-    def set_session(self):
-        self.session = self.cluster.connect()
+    def _set_session(self):
+        self._session = self._cluster.connect()
         statement = f"CREATE KEYSPACE IF NOT EXISTS {self._config.keyspace} " + \
                     "WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': " + \
                     f"'{self._config.replication_factor}'" + "}"
-        self.session.execute(statement)
-        self.session.set_keyspace(self._config.keyspace)
+        self._session.execute(statement)
+        self._session.set_keyspace(self._config.keyspace)
+
+    def _create_tables(self):
+        for table_definition in TableDefinition.all:
+            self._session.execute(table_definition)
