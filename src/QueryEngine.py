@@ -17,9 +17,9 @@ class QueryEngine:
         def __init__(self, engine: object) -> None:
             self._engine = engine
             self.seat = self.Seat(engine)
-            # self.station = self.Station(engine)
-            # self.reservation = self.Reservation(engine)
-            # self.run = self.Run(engine)
+            self.station = self.Station(engine)
+            self.reservation = self.Reservation(engine)
+            self.run = self.Run(engine)
 
         class Seat:
             def __init__(self, engine: object) -> None:
@@ -86,30 +86,31 @@ class QueryEngine:
     class Insert:
         def __init__(self, engine: object) -> None:
             self._engine = engine
-            self._query_seat = self._engine.session.prepare("INSERT INTO seat (seat_id, type) VALUES (?, ?)")
+            self._query_seat = self._engine.session.prepare(
+                "INSERT INTO seat (seat_id, type) VALUES (blobAsUuid(timeuuidAsBlob(now())), ?)")
             self._query_station = self._engine.session.prepare(
-                "INSERT INTO station (station_id, station_name) VALUES (?, ?)")
+                "INSERT INTO station (station_id, station_name) VALUES (blobAsUuid(timeuuidAsBlob(now())), ?)")
             self._query_reservation = self._engine.session.prepare(
                 "INSERT INTO reservation (run_id, seat_id) VALUES (?, ?)")
             self._query_run = self._engine.session.prepare(
                 "INSERT INTO run (run_id, departure_station_id, departure_time, arrival_station_id, "
-                "arrival_time) VALUES (?, ?, ?, ?, ?)")
+                "arrival_time) VALUES (blobAsUuid(timeuuidAsBlob(now())), ?, ?, ?, ?)")
 
-        def seat(self, seat_id: int, type_: str):
-            query = self._query_seat.bind({'seat_id': seat_id, 'type': type_})
+        def seat(self, type_: str):
+            query = self._query_seat.bind({'type': type_})
             self._engine.execute(query)
 
-        def station(self, station_id: int, station_name: str):
-            query = self._query_station.bind({'station_id': station_id, 'station_name': station_name})
+        def station(self, station_name: str):
+            query = self._query_station.bind({'station_name': station_name})
             self._engine.execute(query)
 
         def reservation(self, run_id: int, seat_id: int):
             query = self._query_reservation.bind({'run_id': run_id, 'seat_id': seat_id})
             self._engine.execute(query)
 
-        def run(self, run_id: int, departure_station_id: int, departure_time: int, arrival_station_id: int,
+        def run(self, departure_station_id: int, departure_time: int, arrival_station_id: int,
                 arrival_time: int):
-            query = self._query_run.bind({'run_id': run_id, 'departure_station_id': departure_station_id,
+            query = self._query_run.bind({'departure_station_id': departure_station_id,
                                           'departure_time': departure_time, 'arrival_station_id': arrival_station_id,
                                           'arrival_time': arrival_time})
             self._engine.execute(query)

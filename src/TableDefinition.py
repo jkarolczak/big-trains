@@ -1,7 +1,7 @@
 class TableDefinition:
     seat = """
         CREATE TABLE IF NOT EXISTS seat (
-            seat_id int,
+            seat_id uuid,
             type text,
             PRIMARY KEY (seat_id)
         );
@@ -9,7 +9,7 @@ class TableDefinition:
 
     station = """
         CREATE TABLE IF NOT EXISTS station (
-            station_id int,
+            station_id uuid,
             station_name text,
             PRIMARY KEY (station_id)
         );
@@ -17,18 +17,18 @@ class TableDefinition:
 
     reservation = """
         CREATE TABLE IF NOT EXISTS reservation (
-            run_id int,
-            seat_id int,
+            run_id uuid,
+            seat_id uuid,
             PRIMARY KEY (run_id, seat_id)
         );
     """
 
     run = """
         CREATE TABLE IF NOT EXISTS run (
-            run_id int,
-            departure_station_id int,
+            run_id uuid,
+            departure_station_id uuid,
             departure_time timestamp,
-            arrival_station_id int,
+            arrival_station_id uuid,
             arrival_time timestamp,
             PRIMARY KEY (run_id)
         );

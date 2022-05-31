@@ -15,8 +15,8 @@ class CassandraConnector:
         self._cluster = Cluster(self._config.ip_address, self._config.port)
         self._session = None
         self._set_session()
-        self.query_engine = QueryEngine(self._session)
         self._create_tables()
+        self.query_engine = QueryEngine(self._session)
 
     def _set_session(self):
         self._session = self._cluster.connect()
