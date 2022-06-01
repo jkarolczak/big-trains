@@ -1,17 +1,24 @@
 from cassandra.cluster import Session, ResultSet
+import uuid
+import datetime
 
 
 class QueryEngine:
+
+    class DuplicateException(Exception):
+        pass
+
     def __init__(self, session: Session) -> None:
         self.session = session
-        self.delete = self.Delete(self)
+        #self.delete = self.Delete(self)
         self.drop = self.Drop(self)
         self.insert = self.Insert(self)
-        self.select = self.Select(self)
-        self.truncate = self.Truncate(self)
+        #self.select = self.Select(self)
+        #self.truncate = self.Truncate(self)
 
     def execute(self, query: str):
         return self.session.execute(query)
+
 
     class Delete:
         def __init__(self, engine: object) -> None:
@@ -71,49 +78,91 @@ class QueryEngine:
             query = f"DROP TABLE {name}"
             self._engine.execute(query)
 
+        def run_by_id(self) -> None:
+            self._drop_table("run_by_id")
+
+        def run_by_departure(self) -> None:
+            self._drop_table("run_by_departure")
+
         def seat(self) -> None:
             self._drop_table("seat")
 
-        def station(self) -> None:
-            self._drop_table("station")
+        def reservation_by_run(self) -> None:
+            self._drop_table("reservation_by_run")
 
-        def reservation(self) -> None:
-            self._drop_table("reservation")
+        def reservation_by_client(self) -> None:
+            self._drop_table("reservation_by_client");
 
-        def run(self) -> None:
-            self._drop_table("run")
+        def all(self) -> None:
+            self.run_by_id()
+            self.run_by_departure()
+            self.seat()
+            self.reservation_by_run()
+            self.reservation_by_client()
 
     class Insert:
         def __init__(self, engine: object) -> None:
             self._engine = engine
+
             self._query_seat = self._engine.session.prepare(
-                "INSERT INTO seat (seat_id, type) VALUES (blobAsUuid(timeuuidAsBlob(now())), ?)")
-            self._query_station = self._engine.session.prepare(
-                "INSERT INTO station (station_id, station_name) VALUES (blobAsUuid(timeuuidAsBlob(now())), ?)")
-            self._query_reservation = self._engine.session.prepare(
-                "INSERT INTO reservation (run_id, seat_id) VALUES (?, ?)")
-            self._query_run = self._engine.session.prepare(
-                "INSERT INTO run (run_id, departure_station_id, departure_time, arrival_station_id, "
-                "arrival_time) VALUES (blobAsUuid(timeuuidAsBlob(now())), ?, ?, ?, ?)")
+                "INSERT INTO seat (run_id, seat_no, is_available, seat_type) VALUES (?, ?, ?, ?) IF NOT EXISTS"
+            )
+            self._query_run_by_id = self._engine.session.prepare(
+                "INSERT INTO run_by_id (run_id, departure_station, departure_date, departure_time, arrival_station, "
+                "travel_time, carrier) VALUES (?, ?, ?, ?, ?, ?, ?) IF NOT EXISTS"
+            )
+            self._query_run_by_departure = self._engine.session.prepare(
+                "INSERT INTO run_by_departure (departure_station, departure_date, arrival_station, departure_time, "
+                "run_id) VALUES (?, ?, ?, ?, ?) IF NOT EXISTS"
+            )
+            self._query_reservation_by_run = self._engine.session.prepare(
+                "INSERT INTO reservation_by_run (run_id, seat_no, client_email, reservation_timestamp) "
+                "VALUES (?, ?, ?, ?)  IF NOT EXISTS"
+            )
+            self._query_reservation_by_client = self._engine.session.prepare(
+                "INSERT INTO reservation_by_client (client_email, run_id, seat_no) VALUES (?, ?, ?) IF NOT EXISTS"
+            )
 
-        def seat(self, type_: str):
-            query = self._query_seat.bind({'type': type_})
+        def seat(self, run_id: uuid.UUID, seat_no: int, seat_type: str, is_available: bool = True):
+            query = self._query_seat.bind((run_id, seat_no, is_available, seat_type))
+            query_rs = self._engine.execute(query)
+            success = query_rs.one().applied
+            if not success:
+                raise QueryEngine.DuplicateException()
+
+        def run(self, departure_station: str, departure_date: datetime.date, departure_time: datetime.time,
+                arrival_station: str, travel_time: int, carrier: str) -> uuid.UUID:
+            run_uuid = uuid.uuid1()
+
+            query = self._query_run_by_departure.bind(
+                (departure_station, departure_date, arrival_station, departure_time, run_uuid)
+            )
+            query_rs = self._engine.execute(query)
+            success = query_rs.one().applied
+            if not success:
+                raise QueryEngine.DuplicateException()
+
+            query = self._query_run_by_id.bind(
+                (run_uuid, departure_station, departure_date, departure_time, arrival_station, travel_time, carrier)
+            )
+            self._engine.execute(query)
+            return run_uuid
+
+        def reservation(self, run_id: uuid.UUID, seat_no: int, client_email: str,
+                        reservation_timestamp: datetime.datetime):
+            query = self._query_reservation_by_run.bind(
+                (run_id, seat_no, client_email, reservation_timestamp)
+            )
+            query_rs = self._engine.execute(query)
+            success = query_rs.one().applied
+            if not success:
+                raise QueryEngine.DuplicateException()
+
+            query = self._query_reservation_by_client.bind(
+                (client_email, run_id, seat_no)
+            )
             self._engine.execute(query)
 
-        def station(self, station_name: str):
-            query = self._query_station.bind({'station_name': station_name})
-            self._engine.execute(query)
-
-        def reservation(self, run_id: int, seat_id: int):
-            query = self._query_reservation.bind({'run_id': run_id, 'seat_id': seat_id})
-            self._engine.execute(query)
-
-        def run(self, departure_station_id: int, departure_time: int, arrival_station_id: int,
-                arrival_time: int):
-            query = self._query_run.bind({'departure_station_id': departure_station_id,
-                                          'departure_time': departure_time, 'arrival_station_id': arrival_station_id,
-                                          'arrival_time': arrival_time})
-            self._engine.execute(query)
 
     class Select:
         def __init__(self, engine: object) -> None:
@@ -126,7 +175,7 @@ class QueryEngine:
         class Seat:
             def __init__(self, engine: object) -> None:
                 self._engine = engine
-                self._query_all = "SELECT * FROM seat"
+                self._query_all = "SELECT * FROM seat_by_"
                 self._query_by_id = self._engine.session.prepare("SELECT * FROM seat WHERE seat_id = ?")
 
             def all(self):
