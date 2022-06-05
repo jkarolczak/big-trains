@@ -1,5 +1,6 @@
 import datetime
 import time
+from typing import Union, List, Any
 
 import numpy as np
 
@@ -43,10 +44,18 @@ class Mock:
             ["Szczecin", "Gdańsk", "Gdynia", "Olsztyn", "Białystok", "Warszawa", "Poznań", "Łódź", "Wrocław",
              "Częstochowa", "Lublin", "Kielce", "Kraków", "Rzeszów"], 1)[0]
 
+    @property
+    def carriage(self) -> List[Any]:
+        result = list()
+        for compartment in range(1, 12):
+            for no in range(1, 7):
+                result.append(self.Seat(compartment, no))
+        return result
+
     class Seat:
-        def __init__(self):
-            self.compartment = np.random.randint(1, 12)
-            self._no = np.random.randint(1, 7)
+        def __init__(self, compartment: Union[int, None] = None, no: Union[int, None] = None) -> None:
+            self.compartment = np.random.randint(1, 12) if compartment is None else compartment
+            self._no = np.random.randint(1, 7) if no is None else no
             self._type = self.no_to_type(self._no)
 
         def no_to_type(self, seat_no: int):
@@ -68,8 +77,8 @@ class Mock:
 if __name__ == "__main__":
     mock = Mock()
     seat = mock.seat
-    station = mock.station
     print(seat.no, seat.type)
+    print(mock.carriage)
     print(mock.station)
     print(mock.email)
     print(mock.date)
