@@ -35,6 +35,10 @@ class Mock:
         return f'{name}@{domain}'
 
     @property
+    def carrier(self):
+        return np.random.choice(["TLK", "IC", "EIC", "EIP"])
+
+    @property
     def seat(self):
         return self.Seat()
 

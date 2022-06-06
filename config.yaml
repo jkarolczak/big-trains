@@ -4,4 +4,4 @@ ip_address:
 port: 9042
 keyspace: bigtrains
 consistency: "ONE"
-replication_factor: 2
+replication_factor: 1

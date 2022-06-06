@@ -12,7 +12,7 @@ class CassandraConnector:
             config: Config
     ) -> None:
         self._config = config
-        self._cluster = Cluster(self._config.ip_address, self._config.port)
+        self._cluster = Cluster(self._config.ip_address, self._config.port, protocol_version=5)
         self._session = None
         self._set_session()
         self._create_tables()
