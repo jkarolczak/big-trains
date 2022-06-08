@@ -1,4 +1,3 @@
-from src import CassandraConnector, Config
 from src.pages import *
 
 

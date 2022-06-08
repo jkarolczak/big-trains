@@ -1,6 +1,5 @@
 import datetime
 import re
-import time
 import uuid
 from multiprocessing import Pool
 from typing import List, Tuple
@@ -145,22 +144,60 @@ def stress_test_1() -> None:
                         st.session_state["client"].query_engine.select.reservation.by_seat(run_id, seat_no))
 
 
+def stress_test_2_agent(args: Tuple[str, Config]) -> None:
+    email, config = args
+    client = CassandraConnector(config)
+    mock = Mock()
+    for _ in range(1000):
+        runs = None
+        try:
+            runs = client.query_engine.select.run.all().all()
+        except:
+            continue
+        if runs is not None:
+            run_id = runs[np.random.randint(0, len(runs))].run_id
+            try:
+                seats = client.query_engine.select.seat.by_run(run_id).all()
+                seats = [seat.seat_no for seat in seats if seat.is_available]
+                seat_no = seats[np.random.randint(0, len(seats))]
+                client.query_engine.insert.reservation(run_id, seat_no, email, mock.now)
+            except:
+                continue
+    return 0
+
+
 def stress_test_2() -> None:
-    pass
+    st.title("Stress test 2")
+    if st.button("run", key="run_stress_test_2"):
+        run_id = None
+        try:
+            run_id = st.session_state["client"].query_engine.select.run.all()[0].run_id
+        except:
+            st.markdown("Create at least one run before running stress test.")
+        if run_id is not None:
+            size = 2
+            mock = Mock()
+            email_ = [mock.email for _ in range(size)]
+            config_ = [st.session_state["config"] for _ in range(size)]
+            with st.spinner("Simulating load"):
+                with Pool(size) as p:
+                    p.map(stress_test_2_agent, zip(email_, config_))
+
+            with st.expander("raw query output"):
+                for run in st.session_state["client"].query_engine.select.run.all().all():
+                    st.subheader(run.run_id)
+                    st.markdown(
+                        st.session_state["client"].query_engine.select.reservation.by_run(run.run_id).all())
 
 
 def stress_test_3_agent(args: Tuple[str, uuid.UUID, List[int], Config]) -> None:
-    # client = CassandraConnector(st.session_state["config"])
-    # client = st.session_state["client"]
     mock = Mock()
     email, run_id, seat_nos, config = args
     client = CassandraConnector(config)
     np.random.shuffle(seat_nos)
     for seat_no in seat_nos:
-        time.sleep(0.0001)
         try:
             client.query_engine.insert.reservation(run_id, seat_no, email, mock.now)
-            print(email, seat_no)
         except:
             continue
     return 0
