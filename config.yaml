@@ -1,7 +1,10 @@
 ip_address:
   - "172.17.0.2"
   - "172.17.0.3"
+  - "172.17.0.4"
+  - "172.17.0.5"
+  - "172.17.0.6"
 port: 9042
 keyspace: bigtrains
-consistency: "ONE"
-replication_factor: 2
+consistency: "QUORUM"
+replication_factor: 5
